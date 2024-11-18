@@ -12,6 +12,8 @@ from enum import Enum
 
 from dwave.system import LeapHybridCQMSampler
 
+import math
+
 
 
 class QuboForm(Enum):
@@ -19,7 +21,6 @@ class QuboForm(Enum):
     PATH_EFFICIENT = 2
     PATH_EFFICIENT_BINARY = 3
     EDGE_MATRIX = 4
-
 
 class VehicleRoutingModel(ABC):
     def __init__(self, num_locations: int, distances: list[list[int]], num_vehicles: int, max_distance: int):
@@ -89,9 +90,6 @@ class EdgeModel(VehicleRoutingModel):
     def run_constrained_model(self):
         raise NotImplementedError
 
-
-
-
 class DefaultRoutingModel(VehicleRoutingModel):
 
     def __init__(self, num_locations: int, distances: list[list[int]], num_vehicles: int, max_distance: int):
@@ -123,10 +121,10 @@ class DefaultRoutingModel(VehicleRoutingModel):
 
         # The cost of going between all stops in the middle
         for m in range(M):
-            for n in range(N-1):
+            for t in range(N-1):
                 for i in range(N+1):
                     for j in range(N+1):
-                        self.obj += self.x[m, i, n] * self.x[m, j, n + 1] * self.distances[i][j]
+                        self.obj += self.x[m, i, t] * self.x[m, j, t + 1] * self.distances[i][j]
 
         self.cqm.set_objective(self.obj)
     
@@ -173,20 +171,20 @@ class DefaultRoutingModel(VehicleRoutingModel):
             self.cqm.add_constraint(sum <= self.max_distance,
                                 label=f"Vehicle {m} drives more than the maximum capacity")
             
-
 class BoundedPathModel(VehicleRoutingModel):
 
     def __init__(self, num_locations: int, distances: list[list[int]], num_vehicles: int, max_distance: int):
         super().__init__(num_locations, distances, num_vehicles, max_distance)
+        self.path_lengths = [math.ceil(num_locations / (m + 1)) for m in range(num_vehicles)]
 
     def _construct_objective(self):
+
+        print("In bounded path")
 
         self.obj = None
 
         M = self.num_vehicles
         N = self.num_locations
-
-        self.path_lengths = [N // (m + 1) for m in range(M)]
 
         # Create all the variables: one for each vehicle/location/position combo
         # k is timestep, j is vertex, i is vehicle
