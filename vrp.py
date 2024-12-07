@@ -33,6 +33,7 @@ class VehicleRoutingModel(ABC):
 
     def build_constrained_model(self):
         """Generates the constrained model for the VRP. The depot is given the zero ID"""
+        print("Building model")
         self._construct_objective()
         self._add_constraints()
 
@@ -130,6 +131,8 @@ class DefaultRoutingModel(VehicleRoutingModel):
     
     def _add_constraints(self):
 
+        print("Adding constraints")
+
         M = self.num_vehicles
         N = self.num_locations
 
@@ -179,7 +182,7 @@ class BoundedPathModel(VehicleRoutingModel):
 
     def _construct_objective(self):
 
-        print("In bounded path")
+        print("In bounded path objective")
 
         self.obj = None
 
@@ -187,7 +190,7 @@ class BoundedPathModel(VehicleRoutingModel):
         N = self.num_locations
 
         # Create all the variables: one for each vehicle/location/position combo
-        # k is timestep, j is vertex, i is vehicle
+        # (i=vehicle, j=vertex, k=timestep)
         self.x = {(i, j, k): Binary(str(i) + "_" + str(j) + "_" + str(k)) for i in range(M) for j in range(N+1) for k in range(self.path_lengths[i])}
 
         # Define the unconstrained binary optimization problem
@@ -214,6 +217,8 @@ class BoundedPathModel(VehicleRoutingModel):
     
     def _add_constraints(self):
 
+        print("In bounded path constraints")
+
         M = self.num_vehicles
         N = self.num_locations
 
@@ -229,13 +234,14 @@ class BoundedPathModel(VehicleRoutingModel):
                             label=f"Vertex {j} is not visited or visited more than once")
 
         # 2. Each vehicle is in one location
-        for i in range(M):
+        for m in range(M):
             for t in range(self.path_lengths[m]):
+                print(f"adding pair {m}, {t}")
                 sum = 0
                 for j in range(N + 1):
-                    sum += self.x[i, j, t]
+                    sum += self.x[m, j, t]
                 self.cqm.add_constraint(sum == 1,
-                                label=f"Vehicle {i} is at more or less than one position at time {t}")
+                                label=f"Vehicle {m} is at more or less than one position at time {t}")
                 
         #3. Each vehicle drives less than the cap
         for m in range(M):
